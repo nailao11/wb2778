@@ -1,0 +1,19 @@
+{
+  "name": "weibo-email-registration-checker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Educational tool to check whether a single email address is already registered on Weibo, based on the prompt shown on Weibo's own signup page. For personal learning / authorized security research only.",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/run-test.js",
+    "postinstall-note": "After install, run: npx playwright install chromium"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
+}

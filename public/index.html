@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>微博邮箱注册检测</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --ink: #1f2328;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --brand: #e6162d;      /* Weibo red */
+      --brand-dark: #c50f24;
+      --ok: #157347;
+      --ok-bg: #e8f5ee;
+      --no: #b42318;
+      --no-bg: #fdecea;
+      --warn: #92600a;
+      --warn-bg: #fdf4e3;
+      --neutral: #374151;
+      --neutral-bg: #eef0f3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+            "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 32px 16px 64px;
+    }
+    .wrap { width: 100%; max-width: 560px; }
+    .brand {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+    }
+    .logo {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--brand); color: #fff; font-weight: 700;
+      display: grid; place-items: center; font-size: 18px;
+    }
+    h1 { font-size: 20px; margin: 0; }
+    .sub { color: var(--muted); font-size: 13px; margin: 2px 0 20px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 14px; padding: 20px; box-shadow: 0 1px 2px rgba(16,24,40,.05);
+    }
+    label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+    .row { display: flex; gap: 10px; }
+    input[type="email"], input[type="text"] {
+      flex: 1; padding: 12px 14px; font-size: 15px;
+      border: 1px solid var(--line); border-radius: 10px; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(230,22,45,.12); }
+    button {
+      padding: 12px 20px; font-size: 15px; font-weight: 600; cursor: pointer;
+      color: #fff; background: var(--brand); border: none; border-radius: 10px;
+      transition: background .15s, opacity .15s; white-space: nowrap;
+    }
+    button:hover { background: var(--brand-dark); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 10px; }
+
+    .result { margin-top: 18px; border-radius: 12px; padding: 16px; display: none; }
+    .result.show { display: block; }
+    .result .head { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+    .result .verdict-en { font-weight: 500; color: var(--muted); font-size: 13px; }
+    .result .detail { margin-top: 8px; font-size: 13px; }
+    .result .prompt {
+      margin-top: 10px; padding: 10px 12px; background: rgba(0,0,0,.035);
+      border-radius: 8px; font-size: 13px; word-break: break-all;
+    }
+    .r-registered { background: var(--no-bg); color: var(--no); }
+    .r-registered .dot { background: var(--no); }
+    .r-not { background: var(--ok-bg); color: var(--ok); }
+    .r-not .dot { background: var(--ok); }
+    .r-inconclusive { background: var(--warn-bg); color: var(--warn); }
+    .r-inconclusive .dot { background: var(--warn); }
+    .r-invalid, .r-error { background: var(--neutral-bg); color: var(--neutral); }
+    .r-invalid .dot, .r-error .dot { background: var(--neutral); }
+
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.5);
+      border-top-color: #fff; border-radius: 50%; display: inline-block;
+      animation: spin .7s linear infinite; vertical-align: -3px; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    details { margin-top: 12px; }
+    summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+    pre {
+      margin: 8px 0 0; padding: 12px; background: #0f172a; color: #e2e8f0;
+      border-radius: 8px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .notice {
+      margin-top: 22px; font-size: 12px; color: var(--muted);
+      border-left: 3px solid var(--line); padding: 4px 0 4px 12px;
+    }
+    .notice b { color: var(--neutral); }
+    a { color: var(--brand-dark); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">微</div>
+      <div>
+        <h1>微博邮箱注册检测</h1>
+        <div class="sub">Weibo email registration checker · 仅用于个人学习 / 授权测试</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label for="email">邮箱地址 Email</label>
+      <div class="row">
+        <input id="email" type="email" placeholder="例如 someone@163.com" autocomplete="off"
+               autocapitalize="off" spellcheck="false" />
+        <button id="btn" type="button">检测</button>
+      </div>
+      <div class="hint">
+        判断依据：在微博注册页输入该邮箱后，若出现「该邮箱已注册，请直接登录」即为
+        <b>已注册</b>；验证通过且无此提示即为<b>未注册</b>。出现验证码 / 频率限制等无法确定时会显示
+        <b>无法确定</b>，不会误判。
+      </div>
+
+      <div id="result" class="result">
+        <div class="head"><span class="dot"></span><span id="verdict">—</span></div>
+        <div class="verdict-en" id="verdictEn"></div>
+        <div class="detail" id="detail"></div>
+        <div class="prompt" id="prompt" hidden></div>
+        <details id="raw-wrap" hidden>
+          <summary>查看原始返回 (raw response)</summary>
+          <pre id="raw"></pre>
+        </details>
+      </div>
+    </div>
+
+    <div class="notice">
+      <b>使用须知：</b>本工具通过在后台打开微博真实注册页、填入邮箱并读取页面提示来判断，仅供
+      <b>个人学习与授权范围内的安全测试</b>。请只检测你本人拥有或已获授权的邮箱，合理控制频率，
+      遵守微博服务条款与当地法律。检测结果以微博页面实时提示为准，可能因页面改版、风控策略而变化。
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const emailEl = $('email');
+    const btn = $('btn');
+    const resultEl = $('result');
+
+    const VERDICTS = {
+      registered:     { cls: 'r-registered',   zh: '已注册',   en: 'Already registered on Weibo' },
+      not_registered: { cls: 'r-not',          zh: '未注册',   en: 'Not registered' },
+      inconclusive:   { cls: 'r-inconclusive', zh: '无法确定', en: 'Inconclusive — could not determine reliably' },
+      invalid_email:  { cls: 'r-invalid',      zh: '邮箱格式无效', en: 'Invalid email format' },
+      error:          { cls: 'r-error',        zh: '出错了',   en: 'Error' },
+    };
+
+    const REASON_ZH = {
+      challenge_or_rate_limit: '微博出现验证码或频率限制，请稍后在浏览器中手动确认。',
+      no_registered_prompt_after_check: '检测已完成且未出现「已注册」提示，判定为未注册。',
+      check_not_observed: '未能观察到微博的校验请求，无法确定，请重试或改用有头模式 (HEADFUL=1)。',
+      email_field_not_found: '未能在页面中找到邮箱输入框（页面可能已改版）。',
+      client_format_check: '邮箱格式不符合要求。',
+      error: '检测过程中发生错误。',
+    };
+
+    function showResult(data) {
+      const key = data.status && VERDICTS[data.status] ? data.status : 'error';
+      const v = VERDICTS[key];
+      resultEl.className = 'result show ' + v.cls;
+      $('verdict').textContent = v.zh;
+      $('verdictEn').textContent = v.en;
+
+      let detail = '';
+      if (data.reason && REASON_ZH[data.reason]) detail = REASON_ZH[data.reason];
+      else if (data.message) detail = data.message;
+      $('detail').textContent = detail;
+
+      const promptEl = $('prompt');
+      const snippet = data.evidence && data.evidence.promptSnippet;
+      if (data.matchedPhrase) {
+        promptEl.hidden = false;
+        promptEl.textContent = '页面提示：' + data.matchedPhrase;
+      } else if (snippet) {
+        promptEl.hidden = false;
+        promptEl.textContent = '页面文本片段：' + snippet;
+      } else {
+        promptEl.hidden = true;
+      }
+
+      $('raw').textContent = JSON.stringify(data, null, 2);
+      $('raw-wrap').hidden = false;
+    }
+
+    async function check() {
+      const email = emailEl.value.trim();
+      if (!email) { emailEl.focus(); return; }
+
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.innerHTML = '<span class="spinner"></span>检测中';
+      resultEl.className = 'result';
+
+      try {
+        const resp = await fetch('/api/check?email=' + encodeURIComponent(email));
+        const data = await resp.json();
+        showResult(data);
+      } catch (e) {
+        showResult({ status: 'error', message: '无法连接后端服务：' + e.message });
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+
+    btn.addEventListener('click', check);
+    emailEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+  </script>
+</body>
+</html>
