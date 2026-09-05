@@ -81,6 +81,8 @@
     .r-not .dot { background: var(--ok); }
     .r-inconclusive { background: var(--warn-bg); color: var(--warn); }
     .r-inconclusive .dot { background: var(--warn); }
+    .r-unsupported { background: var(--warn-bg); color: var(--warn); }
+    .r-unsupported .dot { background: var(--warn); }
     .r-invalid, .r-error { background: var(--neutral-bg); color: var(--neutral); }
     .r-invalid .dot, .r-error .dot { background: var(--neutral); }
 
@@ -124,9 +126,9 @@
         <button id="btn" type="button">检测</button>
       </div>
       <div class="hint">
-        判断依据：在微博注册页输入该邮箱后，若出现「该邮箱已注册，请直接登录」即为
-        <b>已注册</b>；验证通过且无此提示即为<b>未注册</b>。出现验证码 / 频率限制等无法确定时会显示
-        <b>无法确定</b>，不会误判。
+        判断依据：调用微博注册页自身的校验接口（<code>/signup/v5/formcheck</code>）。返回
+        「该邮箱已注册，请直接登录」即为<b>已注册</b>；返回可注册即为<b>未注册</b>；微博不接受该邮箱时为
+        <b>邮箱不可用</b>；出现验证码 / 频率限制等则显示<b>无法确定</b>，绝不误判。
       </div>
 
       <div id="result" class="result">
@@ -156,19 +158,22 @@
 
     const VERDICTS = {
       registered:     { cls: 'r-registered',   zh: '已注册',   en: 'Already registered on Weibo' },
-      not_registered: { cls: 'r-not',          zh: '未注册',   en: 'Not registered' },
+      not_registered: { cls: 'r-not',          zh: '未注册',   en: 'Not registered (available)' },
+      unsupported:    { cls: 'r-unsupported',  zh: '邮箱不可用', en: 'Email not supported by Weibo' },
       inconclusive:   { cls: 'r-inconclusive', zh: '无法确定', en: 'Inconclusive — could not determine reliably' },
       invalid_email:  { cls: 'r-invalid',      zh: '邮箱格式无效', en: 'Invalid email format' },
       error:          { cls: 'r-error',        zh: '出错了',   en: 'Error' },
     };
 
     const REASON_ZH = {
-      challenge_or_rate_limit: '微博出现验证码或频率限制，请稍后在浏览器中手动确认。',
-      no_registered_prompt_after_check: '检测已完成且未出现「已注册」提示，判定为未注册。',
-      check_not_observed: '未能观察到微博的校验请求，无法确定，请重试或改用有头模式 (HEADFUL=1)。',
-      email_field_not_found: '未能在页面中找到邮箱输入框（页面可能已改版）。',
+      challenge_or_rate_limit: '微博要求验证码或触发了频率限制，请稍后再试。',
+      email_unsupported: '微博不接受该邮箱（格式不符合或该邮箱服务商规则不支持），并非“已注册/未注册”。',
       client_format_check: '邮箱格式不符合要求。',
-      error: '检测过程中发生错误。',
+      timeout: '请求微博超时，无法判断，请重试。',
+      network_error: '无法连接微博（本机需能正常访问 weibo.com）。',
+      bad_response: '微博返回了非预期内容，可能改版或被风控拦截。',
+      unexpected_response: '微博返回结构异常，可能接口已变化。',
+      unknown_message: '微博返回了未知提示，为避免误判不下结论。',
     };
 
     function showResult(data) {
@@ -183,14 +188,12 @@
       else if (data.message) detail = data.message;
       $('detail').textContent = detail;
 
+      // Show the actual Weibo prompt text when we have it.
       const promptEl = $('prompt');
-      const snippet = data.evidence && data.evidence.promptSnippet;
-      if (data.matchedPhrase) {
+      const weiboMsg = (data.evidence && data.evidence.msg) || data.message;
+      if (weiboMsg && data.status !== 'invalid_email' && data.status !== 'network_error') {
         promptEl.hidden = false;
-        promptEl.textContent = '页面提示：' + data.matchedPhrase;
-      } else if (snippet) {
-        promptEl.hidden = false;
-        promptEl.textContent = '页面文本片段：' + snippet;
+        promptEl.textContent = '微博返回：' + weiboMsg;
       } else {
         promptEl.hidden = true;
       }

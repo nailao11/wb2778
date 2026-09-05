@@ -117,7 +117,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/api/health') {
-    return sendJson(res, 200, { ok: true, weiboUrl: CONFIG.weiboUrl });
+    return sendJson(res, 200, { ok: true, endpoint: CONFIG.formcheckUrl });
   }
 
   if (req.method === 'GET') {
@@ -130,9 +130,9 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`\n  微博邮箱注册检测 / Weibo email registration checker`);
-  console.log(`  Server running at  http://${HOST}:${PORT}`);
-  console.log(`  Target signup page: ${CONFIG.weiboUrl}`);
-  console.log(`  Headless: ${!CONFIG.headful}  |  Min interval: ${CONFIG.minIntervalMs}ms\n`);
+  console.log(`  Server running at   http://${HOST}:${PORT}`);
+  console.log(`  Weibo check endpoint: ${CONFIG.formcheckUrl}`);
+  console.log(`  Min interval: ${CONFIG.minIntervalMs}ms\n`);
   console.log('  ⚠  For personal learning / authorized testing only. Check emails you own or are authorized to check.\n');
 });
 

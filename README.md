@@ -5,51 +5,65 @@
 > ⚠️ **仅供个人学习与已授权范围内的安全测试（账号枚举 / account enumeration 演示）。**
 > 请只检测你本人拥有或已获授权的邮箱，控制检测频率，遵守微博服务条款与当地法律。
 
+**零依赖**：只用 Node.js 内置模块，不需要安装任何包，也不需要浏览器。
+
 ---
 
 ## 判断依据
 
-完全以**微博真实注册页**的实时提示为准，不猜测、不伪造：
+直接调用微博注册页**自身**在你输入邮箱、离开输入框时所调用的校验接口：
 
-1. 后端用无头浏览器（Playwright + Chromium）打开注册页：
-   `https://www.weibo.com/signup/mobile.php?lang=zh-cn&inviteCode=&from=&appsrc=&backurl=&showlogo=`
-2. 像真人一样把邮箱填进「邮箱」输入框并触发校验；
-3. 读取页面提示：
-   - 出现 **「该邮箱已注册，请直接登录」** → **已注册**；
-   - 校验完成且无该提示（或提示「可以注册」）→ **未注册**；
-   - 出现验证码 / 频率限制 / 页面异常等无法确定的情况 → **无法确定**（不会误判）。
+```
+GET https://weibo.com/signup/v5/formcheck?type=email&value=<邮箱>
+```
+
+它返回一段 JSON，微博自己就在里面给出了结论（以下为真实抓包结果）：
+
+| `data.state` | `data.msg` | 工具结论 |
+|:---:|---|---|
+| `false` | `该邮箱已注册，请直接登录` | **已注册** `registered` |
+| `true` | （空） | **未注册（可注册）** `not_registered` |
+| `false` | `注册失败(邮箱不支持)` | **邮箱不可用** `unsupported`（格式/服务商不被接受） |
+
+这正是你在页面上看到的那句「该邮箱已注册，请直接登录」，只是直接从接口读取，所以又快又准。
+出现验证码 / 频率限制 / 接口改版 / 网络错误等**无法确定**的情况时，一律返回 `inconclusive`，
+**绝不猜测、绝不误判**。
 
 ### 结果状态
 
 | 状态 | 含义 | `registered` |
 |------|------|:---:|
 | `registered` | 已注册 | `true` |
-| `not_registered` | 未注册 | `false` |
-| `inconclusive` | 无法确定（验证码 / 频率限制 / 页面改版 / 网络错误等） | `null` |
-| `invalid_email` | 邮箱格式无效 | `null` |
+| `not_registered` | 未注册（可注册） | `false` |
+| `unsupported` | 微博不接受该邮箱（格式/服务商规则） | `null` |
+| `inconclusive` | 无法确定（验证码 / 频率限制 / 接口异常 / 网络错误） | `null` |
+| `invalid_email` | 邮箱格式无效（本地预校验） | `null` |
 
-**为什么需要后端？** 浏览器受同源策略限制，前端 JS 无法读取 `weibo.com` 的返回；微博还带有反爬 JS。
-无头浏览器直接运行微博自己的页面脚本，天然携带所需的 cookie / token，是最准确、最不易误判的方式。
+**为什么需要后端？** 浏览器同源策略下前端 JS 读不到 weibo.com 的返回，所以用一个极小的
+Node 后端代为请求、解析并返回结果。前端页面由同一个后端提供，天然无跨域问题。
 
 ---
 
 ## 运行方式
 
 ### 1. 环境要求
-- Node.js **18+**
-- 首次运行需要下载一次 Chromium（约 150MB）
+- Node.js **18+**（推荐 20/22；用到内置 `fetch`）
+- 运行环境需能正常访问 `weibo.com`
 
-### 2. 安装
+### 2. 启动
 ```bash
-npm install
-npx playwright install chromium
-```
-
-### 3. 启动
-```bash
+node server.js
+# 或
 npm start
 ```
+> 没有第三方依赖，`npm install` 可跳过（跑一下也行，它不会装任何东西）。
+
 然后浏览器打开 **http://127.0.0.1:3000** ，输入邮箱、点「检测」。
+
+### 命令行直接测（可选）
+```bash
+node test/real-weibo.js someone@example.com another@example.com
+```
 
 ---
 
@@ -59,18 +73,18 @@ npm start
 |------|--------|------|
 | `PORT` | `3000` | 服务端口 |
 | `HOST` | `127.0.0.1` | 监听地址 |
-| `HEADFUL` | `0` | 设为 `1` 用**有头模式**（能看到浏览器窗口；遇到验证码时便于手动处理/排查） |
-| `MIN_INTERVAL_MS` | `3000` | 两次检测之间的最小间隔（毫秒），礼貌限速 |
-| `CHECK_TIMEOUT` | `15000` | 等待页面提示的超时（毫秒） |
-| `NAV_TIMEOUT` | `30000` | 打开注册页的超时（毫秒） |
+| `MIN_INTERVAL_MS` | `1000` | 两次检测的最小间隔（毫秒），礼貌限速 |
+| `CHECK_TIMEOUT` | `15000` | 单次请求超时（毫秒） |
 | `RATE_MAX` | `20` | 每个 IP 每分钟最多请求数 |
-| `USER_AGENT` | 一个常见的桌面 Chrome UA | 自定义 UA |
-| `CHROMIUM_PATH` | 空（由 Playwright 自动定位） | 指定 Chromium 可执行文件路径 |
-| `WEIBO_URL` | 上述注册页 | 目标页面（测试时可指向本地 mock） |
+| `USER_AGENT` | 常见桌面 Chrome UA | 自定义 UA |
+| `WEIBO_FORMCHECK_URL` | 上述接口 | 目标接口（测试时可指向本地 mock） |
+| `WEIBO_REFERER` | 注册页 URL | 请求携带的 Referer |
 
-示例：有头模式 + 换端口
+### Behind a proxy / 在代理环境下
+若你的机器必须经代理访问外网，用如下方式启动（Node 的内置 fetch 需要在**启动时**开启代理）：
 ```bash
-HEADFUL=1 PORT=8080 npm start
+HTTPS_PROXY=http://your-proxy:port NODE_USE_ENV_PROXY=1 node server.js
+# 若代理会重签 TLS，还需： NODE_EXTRA_CA_CERTS=/path/to/proxy-ca.crt
 ```
 
 ---
@@ -80,46 +94,46 @@ HEADFUL=1 PORT=8080 npm start
 ```
 GET /api/check?email=someone@163.com
 ```
-返回 JSON，例如：
+返回 JSON，例如（真实返回）：
 ```json
 {
   "email": "someone@163.com",
   "status": "registered",
   "registered": true,
-  "matchedPhrase": "该邮箱已注册",
-  "evidence": {
-    "promptSnippet": "…该邮箱已注册，请直接登录…",
-    "apiResponses": [ { "url": "…", "status": 200, "snippet": "…" } ]
-  },
+  "message": "该邮箱已注册，请直接登录",
+  "evidence": { "state": false, "code": "600001", "msg": "该邮箱已注册，请直接登录" },
   "checkedAt": "2026-09-05T12:00:00.000Z",
-  "source": "weibo-signup"
+  "source": "weibo-formcheck"
 }
 ```
-其他：`GET /api/health` 健康检查。
+另有 `GET /api/health` 健康检查。
 
 ---
 
 ## 测试
 
-无需联网、不访问 weibo.com。使用本地 mock 注册页验证判定逻辑的每个分支：
 ```bash
-npm test                 # 直接测试核心判定逻辑（lib/checker.js）
-node test/smoke-server.js  # 端到端测试 HTTP 服务 + 前端 + /api/check
+npm test              # 离线测试：interpret() 单测（用真实抓到的 JSON）+ 对本地 mock 的集成测试，不联网
+npm run test:real     # 真实测试：直接请求 weibo.com（需能访问微博）
+node test/smoke-server.js   # 端到端：起服务 + 前端 + /api/check（对本地 mock）
 ```
-`test/mock-weibo.html` + `test/mock-server.js` 复现了微博注册页「填邮箱→XHR校验→显示提示」的行为，
-覆盖：已注册 / 未注册 / 无提示但校验通过 / 验证码 / 邮箱格式错误。
+`test/mock-server.js` 复现了 `formcheck` 的真实 JSON 结构，覆盖：已注册 / 未注册 / 邮箱不可用 /
+验证码 / 参数错误 / 非 JSON / 非 200 等分支。
+
+> 说明：本工具已在真实 weibo.com 上验证通过（例如 `14725836900@163.com` → 已注册，
+> 返回「该邮箱已注册，请直接登录」，与注册页表现一致）。
 
 ---
 
 ## 常见问题
 
-- **总是返回「无法确定」（验证码 / 安全验证）**：微博对频繁或可疑访问会弹验证码。
-  降低频率，或用 `HEADFUL=1` 打开可见窗口手动通过一次；换网络 / IP 也可能有帮助。
-- **返回 `inconclusive` 且 `reason=error`（网络错误）**：所在环境无法访问 `weibo.com`。
-  本工具需在**能正常打开微博的机器/网络**上运行。
-- **找不到邮箱输入框（`email_field_not_found`）**：微博页面可能已改版；
-  查看返回里的 `evidence.promptSnippet`，必要时更新 `lib/checker.js` 里的选择器 / 提示词。
-- **结果会变**：一切以微博页面实时提示为准，可能随其改版与风控策略变化。
+- **返回「无法确定」inconclusive**：可能是微博要求验证码 / 触发频率限制（降低频率、稍后再试），
+  或接口返回异常（`reason` 字段会说明：`challenge_or_rate_limit` / `unexpected_response` /
+  `bad_response` / `unknown_message`）。`network_error` / `timeout` 则表示本机访问微博失败。
+- **全部返回 `bad_response` 且提示 host 不在白名单**：说明当前环境的网络策略未放行 weibo.com，
+  请在能访问微博的机器/网络上运行（或按上文配置代理并放行 weibo.com）。
+- **结果会变**：一切以微博接口实时返回为准，可能随其改版与风控策略变化；本工具已尽量对异常返回
+  保守处理，避免误判。
 
 ---
 
@@ -127,14 +141,14 @@ node test/smoke-server.js  # 端到端测试 HTTP 服务 + 前端 + /api/check
 
 ```
 .
-├── server.js            # HTTP 服务：静态前端 + /api/check
-├── lib/checker.js       # 核心：Playwright 打开注册页、读取提示、给出判定
+├── server.js            # 极小 HTTP 服务：静态前端 + /api/check（Node 内置模块）
+├── lib/checker.js       # 核心：请求 formcheck 接口并解析 JSON 给出判定（零依赖）
 ├── public/index.html    # 前端页面
 ├── test/
-│   ├── mock-weibo.html  # 本地 mock 注册页
-│   ├── mock-server.js   # 本地 mock 服务（含校验接口）
-│   ├── run-test.js      # 判定逻辑测试
-│   └── smoke-server.js  # 端到端测试
+│   ├── mock-server.js   # 本地 mock：复现 formcheck 的真实 JSON
+│   ├── run-test.js      # 单测 + 集成测试（离线）
+│   ├── smoke-server.js  # 端到端测试（离线）
+│   └── real-weibo.js    # 真实接口测试（需联网）
 ├── package.json
 └── README.md
 ```
@@ -143,6 +157,6 @@ node test/smoke-server.js  # 端到端测试 HTTP 服务 + 前端 + /api/check
 
 ## 免责声明
 
-本项目仅用于**个人学习**与**已获授权**的安全测试/调试，用于演示注册表单的账号枚举
+本项目仅用于**个人学习**与**已获授权**的安全测试 / 调试，用于演示注册表单的账号枚举
 （account/username enumeration）行为。请勿用于批量枚举、骚扰、侵犯他人隐私或任何违反
 微博服务条款及法律法规的用途。使用者需自行承担相应责任。

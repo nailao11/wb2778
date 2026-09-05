@@ -1,8 +1,10 @@
 'use strict';
 
 /**
- * Offline test of the detection logic against the local mock signup page.
- * weibo.com is never contacted here. Verifies every verdict branch.
+ * Offline tests. weibo.com is never contacted here.
+ *
+ *   1) Unit-test interpret() against the exact JSON captured from real Weibo.
+ *   2) Integration-test checkEmail() against a local mock formcheck server.
  *
  *   node test/run-test.js
  */
@@ -12,57 +14,72 @@ const { createMockServer } = require('./mock-server');
 const PORT = parseInt(process.env.MOCK_PORT || '4599', 10);
 
 // Point the checker at the mock BEFORE requiring it (CONFIG reads env on load).
-process.env.WEIBO_URL = `http://127.0.0.1:${PORT}/signup`;
+process.env.WEIBO_FORMCHECK_URL = `http://127.0.0.1:${PORT}/signup/v5/formcheck`;
 process.env.MIN_INTERVAL_MS = '0';
-process.env.CHECK_TIMEOUT = process.env.CHECK_TIMEOUT || '8000';
-process.env.NAV_TIMEOUT = process.env.NAV_TIMEOUT || '15000';
-// Use the pre-installed Chromium in this environment if present and no explicit
-// path was given; on a normal machine Playwright resolves its own browser.
-if (!process.env.CHROMIUM_PATH) {
-  const fs = require('fs');
-  const candidate = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-  if (fs.existsSync(candidate)) process.env.CHROMIUM_PATH = candidate;
+
+const { checkEmail, interpret } = require('../lib/checker');
+
+let pass = 0, fail = 0;
+function check(name, cond, extra) {
+  cond ? pass++ : fail++;
+  console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? '  ' + extra : ''}`);
 }
 
-const { checkEmail, closeBrowser } = require('../lib/checker');
+// --- 1) interpret() unit tests using real captured payloads ---------------
+const REAL = {
+  registered:
+    '{"code":"600001","data":{"id":"","state":false,"type":"err","code":"600001","action":"io","msg":"该邮箱已注册，请<a href=\\"//weibo.com/login.php\\" target=\\"_top\\">直接登录</a>","iodata":""},"msg":""}',
+  available:
+    '{"code":"600001","data":{"id":"","state":true,"type":"ok","code":"600001","action":"io","msg":"","iodata":""},"msg":""}',
+  unsupported:
+    '{"code":"600001","data":{"id":"","state":false,"type":"err","code":"600001","action":"io","msg":"注册失败(邮箱不支持)","iodata":""},"msg":""}',
+  paramerr: '{"code":"100001","data":[],"msg":"参数错误！(RG020101)"}',
+};
 
+function runUnit() {
+  console.log('--- interpret() unit tests (real Weibo payloads) ---');
+  let r;
+  r = interpret('a@b.com', 200, REAL.registered);
+  check('registered payload -> registered', r.status === 'registered' && r.registered === true, `(${r.status})`);
+  r = interpret('a@b.com', 200, REAL.available);
+  check('available payload -> not_registered', r.status === 'not_registered' && r.registered === false, `(${r.status})`);
+  r = interpret('a@b.com', 200, REAL.unsupported);
+  check('unsupported payload -> unsupported', r.status === 'unsupported', `(${r.status})`);
+  r = interpret('a@b.com', 200, REAL.paramerr);
+  check('param-error payload -> inconclusive', r.status === 'inconclusive', `(${r.status} / ${r.reason})`);
+  r = interpret('a@b.com', 200, 'not-json');
+  check('non-JSON -> inconclusive', r.status === 'inconclusive' && r.reason === 'bad_response', `(${r.reason})`);
+  r = interpret('a@b.com', 503, '{}');
+  check('HTTP 503 -> inconclusive', r.status === 'inconclusive', `(${r.status})`);
+}
+
+// --- 2) checkEmail() integration against the mock server ------------------
 const CASES = [
-  { email: '14725836900@163.com', expect: 'registered' },
-  { email: 'registered@163.com', expect: 'registered' },
-  { email: 'free@163.com', expect: 'not_registered' },
-  { email: 'silent@163.com', expect: 'not_registered' },
-  { email: 'captcha@test.com', expect: 'inconclusive' },
+  { email: 'registered_user@163.com', expect: 'registered' },
+  { email: 'free_user@163.com', expect: 'not_registered' },
+  { email: 'nope_user@163.com', expect: 'unsupported' },
+  { email: 'captcha_user@163.com', expect: 'inconclusive' },
+  { email: 'param_user@163.com', expect: 'inconclusive' },
   { email: 'not-an-email', expect: 'invalid_email' },
 ];
 
 (async () => {
-  const server = createMockServer();
-  await new Promise((resolve) => server.listen(PORT, '127.0.0.1', resolve));
-  console.log(`Mock Weibo signup running at http://127.0.0.1:${PORT}/signup\n`);
+  runUnit();
 
-  let pass = 0;
-  let fail = 0;
+  const server = createMockServer();
+  await new Promise((r) => server.listen(PORT, '127.0.0.1', r));
+  console.log(`\n--- checkEmail() integration (mock at 127.0.0.1:${PORT}) ---`);
 
   for (const c of CASES) {
-    let got;
-    try {
-      const res = await checkEmail(c.email);
-      got = res.status;
-      const ok = got === c.expect;
-      ok ? pass++ : fail++;
-      console.log(
-        `${ok ? 'PASS' : 'FAIL'}  ${c.email.padEnd(24)} expected=${c.expect.padEnd(15)} got=${got}` +
-          (res.matchedPhrase ? `  ("${res.matchedPhrase}")` : res.reason ? `  [${res.reason}]` : '')
-      );
-    } catch (e) {
-      fail++;
-      console.log(`FAIL  ${c.email.padEnd(24)} threw: ${e.message}`);
-    }
+    const res = await checkEmail(c.email);
+    check(
+      `${c.email.padEnd(26)} -> ${c.expect}`,
+      res.status === c.expect,
+      `(got ${res.status}${res.reason ? '/' + res.reason : ''})`
+    );
   }
 
+  await new Promise((r) => server.close(r));
   console.log(`\n${pass} passed, ${fail} failed.`);
-
-  await closeBrowser();
-  await new Promise((resolve) => server.close(resolve));
   process.exit(fail === 0 ? 0 : 1);
 })();

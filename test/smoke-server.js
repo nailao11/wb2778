@@ -36,12 +36,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     ...process.env,
     PORT: String(APP_PORT),
     HOST: '127.0.0.1',
-    WEIBO_URL: `http://127.0.0.1:${MOCK_PORT}/signup`,
+    WEIBO_FORMCHECK_URL: `http://127.0.0.1:${MOCK_PORT}/signup/v5/formcheck`,
     MIN_INTERVAL_MS: '0',
     CHECK_TIMEOUT: '8000',
-    CHROMIUM_PATH:
-      process.env.CHROMIUM_PATH ||
-      '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   };
   const app = spawn('node', [path.join(__dirname, '..', 'server.js')], {
     env,
@@ -72,13 +69,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     check('GET / serves frontend', home.status === 200 && home.body.includes('微博邮箱注册检测'));
 
     const reg = await get(
-      `http://127.0.0.1:${APP_PORT}/api/check?email=${encodeURIComponent('14725836900@163.com')}`
+      `http://127.0.0.1:${APP_PORT}/api/check?email=${encodeURIComponent('registered@163.com')}`
     );
     const regJson = JSON.parse(reg.body);
     check('registered email -> status=registered', regJson.status === 'registered', `(got ${regJson.status})`);
 
     const free = await get(
-      `http://127.0.0.1:${APP_PORT}/api/check?email=${encodeURIComponent('brandnew@163.com')}`
+      `http://127.0.0.1:${APP_PORT}/api/check?email=${encodeURIComponent('free@163.com')}`
     );
     const freeJson = JSON.parse(free.body);
     check('new email -> status=not_registered', freeJson.status === 'not_registered', `(got ${freeJson.status})`);
