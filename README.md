@@ -5,7 +5,8 @@
 > ⚠️ **仅供个人学习与已授权范围内的安全测试（账号枚举 / account enumeration 演示）。**
 > 请只检测你本人拥有或已获授权的邮箱，控制检测频率，遵守微博服务条款与当地法律。
 
-**零依赖**：只用 Node.js 内置模块，不需要安装任何包，也不需要浏览器。
+**零依赖 & 双后端**：提供 Node 版（仅用内置模块）和 PHP 版（仅用 curl 扩展）两种后端，
+不需要安装任何第三方库，也不需要浏览器/无头浏览器。可本机运行，也可部署到 PHP 虚拟主机 / 宝塔。
 
 ---
 
@@ -69,6 +70,45 @@ npm start
 ```bash
 node test/real-weibo.js a@example.com b@example.com c@example.com   # 逐个检测
 ```
+
+---
+
+## 部署方式（要不要服务器 / 宝塔 / PHP 虚拟主机？）
+
+**一句话结论：需要一个"能跑服务端代码"的环境，但不必是大服务器；纯静态网页做不到。**
+
+**为什么纯静态页面不行？** 检测要请求 `weibo.com/signup/v5/formcheck`，而该接口**要求请求头
+`Referer` 是 weibo.com 的注册页**。浏览器在你自己的域名下**无法伪造这个 Referer**（实测：Referer
+不对就返回「参数限制01」），跨域 `fetch` 又会被 CORS 拦截、JSONP 也带不上正确 Referer。只有服务端
+（Node / PHP）能带上正确的 Referer——所以必须有一个很小的后端。
+
+可选方案（任选其一）：
+
+| 方案 | 需要什么 | 适合 |
+|------|----------|------|
+| **A. 本机运行（最简单）** | Node 18+，`node server.js` | 自己用 / 临时测试，零成本、无需服务器 |
+| **B. PHP 虚拟主机 / 共享主机** | PHP 7+ 且有 curl（几乎都有） | 已有便宜 PHP 空间，不想装 Node |
+| **C. VPS + 宝塔面板** | 宝塔里跑 Node 项目，或直接放 PHP 站点 | 想长期在线、有域名 |
+
+> 宝塔**不是必须**的，它只是让你在 VPS 上更方便地管理站点 / 进程。用不用都行。
+
+### B. 部署到 PHP 虚拟主机 / 宝塔（最省事，无需 Node）
+把 `php/` 目录里的两个文件上传到网站根目录：
+- `php/index.html` → 访问的页面
+- `php/check.php`  → 检测接口（页面会自动调用它）
+
+然后浏览器打开 `http(s)://你的域名/index.html`。**依赖**：PHP **7+** 且启用 **curl 扩展**
+（没有 curl 会自动回退到 `allow_url_fopen`）。**无需 Composer、无需任何第三方库。**
+（已在真实 weibo.com 上验证：`14725836900@163.com` → 已注册。）
+
+### C. VPS / 宝塔跑 Node
+上传整个项目，`node server.js`（可用 pm2 或宝塔的「Node 项目」守护）。建议用 Nginx 反代到本机端口，
+并只对可信来源开放。
+
+### 依赖一览
+- **Node 版**：Node.js **18+**，**零第三方依赖**（仅用内置模块）。
+- **PHP 版**：PHP **7+**，需 **curl 扩展**（或 `allow_url_fopen`），**零库依赖**。
+- 两版共同前提：**运行环境能正常访问 weibo.com**。
 
 ---
 
@@ -146,9 +186,12 @@ node test/smoke-server.js   # 端到端：起服务 + 前端 + /api/check（对�
 
 ```
 .
-├── server.js            # 极小 HTTP 服务：静态前端 + /api/check（Node 内置模块）
+├── server.js            # 【Node 版】极小 HTTP 服务：静态前端 + /api/check（Node 内置模块）
 ├── lib/checker.js       # 核心：请求 formcheck 接口并解析 JSON 给出判定（零依赖）
-├── public/index.html    # 前端页面
+├── public/index.html    # 前端页面（Node 版，调用 /api/check）
+├── php/                 # 【PHP 版】上传到 PHP 虚拟主机 / 宝塔即可
+│   ├── check.php        #   检测接口（用 curl，带正确 Referer）
+│   └── index.html       #   前端页面（调用 check.php）
 ├── test/
 │   ├── mock-server.js   # 本地 mock：复现 formcheck 的真实 JSON
 │   ├── run-test.js      # 单测 + 集成测试（离线）

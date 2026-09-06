@@ -34,6 +34,10 @@ const REAL = {
   unsupported:
     '{"code":"600001","data":{"id":"","state":false,"type":"err","code":"600001","action":"io","msg":"注册失败(邮箱不支持)","iodata":""},"msg":""}',
   paramerr: '{"code":"100001","data":[],"msg":"参数错误！(RG020101)"}',
+  // Real anti-bot rejection: note state:true but msg 参数限制01 — must NOT be
+  // treated as "available".
+  paramlimit:
+    '{"code":"600001","data":{"id":"","state":true,"type":"err","code":"600001","action":"io","msg":"参数限制01","iodata":""},"msg":""}',
 };
 
 function runUnit() {
@@ -47,6 +51,9 @@ function runUnit() {
   check('unsupported payload -> unsupported', r.status === 'unsupported', `(${r.status})`);
   r = interpret('a@b.com', 200, REAL.paramerr);
   check('param-error payload -> inconclusive', r.status === 'inconclusive', `(${r.status} / ${r.reason})`);
+  r = interpret('a@b.com', 200, REAL.paramlimit);
+  check('参数限制 + state:true -> inconclusive (not not_registered)',
+    r.status === 'inconclusive' && r.registered === null, `(${r.status} / ${r.reason})`);
   r = interpret('a@b.com', 200, 'not-json');
   check('non-JSON -> inconclusive', r.status === 'inconclusive' && r.reason === 'bad_response', `(${r.reason})`);
   r = interpret('a@b.com', 503, '{}');
