@@ -35,7 +35,9 @@ const MIME = {
 
 // Very small per-IP rate limit (the checker also serializes globally).
 const RATE_WINDOW_MS = 60_000;
-const RATE_MAX = parseInt(process.env.RATE_MAX || '20', 10); // per IP per minute
+// Per-IP cap. Batches are checked sequentially and the checker already paces
+// requests toward Weibo via MIN_INTERVAL_MS, so this is just an abuse ceiling.
+const RATE_MAX = parseInt(process.env.RATE_MAX || '120', 10); // per IP per minute
 const hits = new Map();
 
 function rateLimited(ip) {

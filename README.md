@@ -60,9 +60,14 @@ npm start
 
 然后浏览器打开 **http://127.0.0.1:3000** ，输入邮箱、点「检测」。
 
+### 批量检测（多个邮箱）
+在输入框里粘贴多个邮箱即可：**每行一个**，或用**逗号 / 空格 / 分号**分隔。会自动去重，
+**逐个依次检测**（每个之间有间隔，礼貌限速），结果实时逐行显示，并给出汇总（已注册 / 未注册 …）。
+可随时「停止」，也可「复制结果」（TSV，含 email / 状态 / message）。单次最多 200 个。
+
 ### 命令行直接测（可选）
 ```bash
-node test/real-weibo.js someone@example.com another@example.com
+node test/real-weibo.js a@example.com b@example.com c@example.com   # 逐个检测
 ```
 
 ---

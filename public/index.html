@@ -33,10 +33,8 @@
       justify-content: center;
       padding: 32px 16px 64px;
     }
-    .wrap { width: 100%; max-width: 560px; }
-    .brand {
-      display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
-    }
+    .wrap { width: 100%; max-width: 720px; }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
     .logo {
       width: 34px; height: 34px; border-radius: 50%;
       background: var(--brand); color: #fff; font-weight: 700;
@@ -49,63 +47,63 @@
       border-radius: 14px; padding: 20px; box-shadow: 0 1px 2px rgba(16,24,40,.05);
     }
     label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
-    .row { display: flex; gap: 10px; }
-    input[type="email"], input[type="text"] {
-      flex: 1; padding: 12px 14px; font-size: 15px;
-      border: 1px solid var(--line); border-radius: 10px; outline: none;
+    textarea {
+      width: 100%; min-height: 96px; resize: vertical; padding: 12px 14px;
+      font-size: 14px; line-height: 1.6; border: 1px solid var(--line);
+      border-radius: 10px; outline: none; font-family: inherit;
       transition: border-color .15s, box-shadow .15s;
     }
-    input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(230,22,45,.12); }
+    textarea:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(230,22,45,.12); }
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
     button {
-      padding: 12px 20px; font-size: 15px; font-weight: 600; cursor: pointer;
+      padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
       color: #fff; background: var(--brand); border: none; border-radius: 10px;
       transition: background .15s, opacity .15s; white-space: nowrap;
     }
     button:hover { background: var(--brand-dark); }
-    button:disabled { opacity: .55; cursor: not-allowed; }
-    .hint { color: var(--muted); font-size: 12px; margin-top: 10px; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    button.ghost { background: transparent; color: var(--neutral); border: 1px solid var(--line); }
+    button.ghost:hover { background: var(--neutral-bg); }
+    .count { color: var(--muted); font-size: 13px; margin-left: auto; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 12px; }
+    code { background: rgba(0,0,0,.05); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
 
-    .result { margin-top: 18px; border-radius: 12px; padding: 16px; display: none; }
-    .result.show { display: block; }
-    .result .head { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-    .result .verdict-en { font-weight: 500; color: var(--muted); font-size: 13px; }
-    .result .detail { margin-top: 8px; font-size: 13px; }
-    .result .prompt {
-      margin-top: 10px; padding: 10px 12px; background: rgba(0,0,0,.035);
-      border-radius: 8px; font-size: 13px; word-break: break-all;
-    }
-    .r-registered { background: var(--no-bg); color: var(--no); }
-    .r-registered .dot { background: var(--no); }
-    .r-not { background: var(--ok-bg); color: var(--ok); }
-    .r-not .dot { background: var(--ok); }
-    .r-inconclusive { background: var(--warn-bg); color: var(--warn); }
-    .r-inconclusive .dot { background: var(--warn); }
-    .r-unsupported { background: var(--warn-bg); color: var(--warn); }
-    .r-unsupported .dot { background: var(--warn); }
-    .r-invalid, .r-error { background: var(--neutral-bg); color: var(--neutral); }
-    .r-invalid .dot, .r-error .dot { background: var(--neutral); }
+    .progress { margin-top: 16px; font-size: 13px; color: var(--muted); display: none; }
+    .progress.show { display: block; }
+    .bar { height: 6px; background: var(--neutral-bg); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+    .bar > i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .2s; }
 
+    .summary { display: none; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .summary.show { display: flex; }
+    .chip { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--neutral-bg); color: var(--neutral); }
+    .chip b { font-weight: 800; }
+    .chip.c-registered { background: var(--no-bg); color: var(--no); }
+    .chip.c-not { background: var(--ok-bg); color: var(--ok); }
+    .chip.c-other { background: var(--warn-bg); color: var(--warn); }
+
+    .tablewrap { margin-top: 14px; overflow-x: auto; display: none; }
+    .tablewrap.show { display: block; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+    td.idx { color: var(--muted); width: 34px; }
+    td.email { word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    td.msg { color: var(--muted); word-break: break-all; }
+    .badge { display: inline-block; font-weight: 700; font-size: 12px; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+    .b-registered { background: var(--no-bg); color: var(--no); }
+    .b-not_registered { background: var(--ok-bg); color: var(--ok); }
+    .b-unsupported, .b-inconclusive { background: var(--warn-bg); color: var(--warn); }
+    .b-invalid_email, .b-error, .b-pending { background: var(--neutral-bg); color: var(--neutral); }
+    .b-pending { opacity: .8; }
     .spinner {
-      width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.5);
-      border-top-color: #fff; border-radius: 50%; display: inline-block;
-      animation: spin .7s linear infinite; vertical-align: -3px; margin-right: 6px;
+      width: 13px; height: 13px; border: 2px solid rgba(0,0,0,.15);
+      border-top-color: var(--neutral); border-radius: 50%; display: inline-block;
+      animation: spin .7s linear infinite; vertical-align: -2px; margin-right: 5px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    details { margin-top: 12px; }
-    summary { cursor: pointer; color: var(--muted); font-size: 12px; }
-    pre {
-      margin: 8px 0 0; padding: 12px; background: #0f172a; color: #e2e8f0;
-      border-radius: 8px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;
-      word-break: break-all;
-    }
-    .notice {
-      margin-top: 22px; font-size: 12px; color: var(--muted);
-      border-left: 3px solid var(--line); padding: 4px 0 4px 12px;
-    }
+    .notice { margin-top: 22px; font-size: 12px; color: var(--muted); border-left: 3px solid var(--line); padding: 4px 0 4px 12px; }
     .notice b { color: var(--neutral); }
-    a { color: var(--brand-dark); }
   </style>
 </head>
 <body>
@@ -119,112 +117,196 @@
     </div>
 
     <div class="card">
-      <label for="email">邮箱地址 Email</label>
-      <div class="row">
-        <input id="email" type="email" placeholder="例如 someone@163.com" autocomplete="off"
-               autocapitalize="off" spellcheck="false" />
+      <label for="emails">邮箱地址 Email（可输入多个：每行一个，或用逗号 / 空格 / 分号分隔）</label>
+      <textarea id="emails" placeholder="例如：&#10;alice@163.com&#10;bob@gmail.com, carol@qq.com"
+                autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+      <div class="toolbar">
         <button id="btn" type="button">检测</button>
-      </div>
-      <div class="hint">
-        判断依据：调用微博注册页自身的校验接口（<code>/signup/v5/formcheck</code>）。返回
-        「该邮箱已注册，请直接登录」即为<b>已注册</b>；返回可注册即为<b>未注册</b>；微博不接受该邮箱时为
-        <b>邮箱不可用</b>；出现验证码 / 频率限制等则显示<b>无法确定</b>，绝不误判。
+        <button id="stop" type="button" class="ghost" hidden>停止</button>
+        <button id="copy" type="button" class="ghost" hidden>复制结果</button>
+        <button id="clear" type="button" class="ghost">清空</button>
+        <span class="count" id="count">0 个邮箱</span>
       </div>
 
-      <div id="result" class="result">
-        <div class="head"><span class="dot"></span><span id="verdict">—</span></div>
-        <div class="verdict-en" id="verdictEn"></div>
-        <div class="detail" id="detail"></div>
-        <div class="prompt" id="prompt" hidden></div>
-        <details id="raw-wrap" hidden>
-          <summary>查看原始返回 (raw response)</summary>
-          <pre id="raw"></pre>
-        </details>
+      <div class="hint">
+        逐个检测（每个之间有间隔，礼貌限速）。返回「该邮箱已注册，请直接登录」为<b>已注册</b>；
+        可注册为<b>未注册</b>；微博不接受为<b>邮箱不可用</b>；验证码 / 频率限制等为<b>无法确定</b>，绝不误判。
+        单次最多 <b id="maxn">200</b> 个。
+      </div>
+
+      <div class="progress" id="progress">
+        <span id="progtext">准备中…</span>
+        <div class="bar"><i id="progbar"></i></div>
+      </div>
+
+      <div class="summary" id="summary"></div>
+
+      <div class="tablewrap" id="tablewrap">
+        <table>
+          <thead>
+            <tr><th class="idx">#</th><th>邮箱</th><th>结果</th><th>微博返回</th></tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
       </div>
     </div>
 
     <div class="notice">
-      <b>使用须知：</b>本工具通过在后台打开微博真实注册页、填入邮箱并读取页面提示来判断，仅供
-      <b>个人学习与授权范围内的安全测试</b>。请只检测你本人拥有或已获授权的邮箱，合理控制频率，
-      遵守微博服务条款与当地法律。检测结果以微博页面实时提示为准，可能因页面改版、风控策略而变化。
+      <b>使用须知：</b>本工具通过调用微博注册页自身的校验接口判断，仅供<b>个人学习与授权范围内的安全测试</b>。
+      请只检测你本人拥有或已获授权的邮箱，合理控制数量与频率，遵守微博服务条款与当地法律。
     </div>
   </div>
 
   <script>
+    const MAX_EMAILS = 200;
     const $ = (id) => document.getElementById(id);
-    const emailEl = $('email');
-    const btn = $('btn');
-    const resultEl = $('result');
+    const emailsEl = $('emails'), btn = $('btn'), stopBtn = $('stop'),
+          copyBtn = $('copy'), clearBtn = $('clear');
+    $('maxn').textContent = MAX_EMAILS;
 
     const VERDICTS = {
-      registered:     { cls: 'r-registered',   zh: '已注册',   en: 'Already registered on Weibo' },
-      not_registered: { cls: 'r-not',          zh: '未注册',   en: 'Not registered (available)' },
-      unsupported:    { cls: 'r-unsupported',  zh: '邮箱不可用', en: 'Email not supported by Weibo' },
-      inconclusive:   { cls: 'r-inconclusive', zh: '无法确定', en: 'Inconclusive — could not determine reliably' },
-      invalid_email:  { cls: 'r-invalid',      zh: '邮箱格式无效', en: 'Invalid email format' },
-      error:          { cls: 'r-error',        zh: '出错了',   en: 'Error' },
+      registered:     { zh: '已注册' },
+      not_registered: { zh: '未注册' },
+      unsupported:    { zh: '邮箱不可用' },
+      inconclusive:   { zh: '无法确定' },
+      invalid_email:  { zh: '格式无效' },
+      error:          { zh: '出错' },
     };
 
-    const REASON_ZH = {
-      challenge_or_rate_limit: '微博要求验证码或触发了频率限制，请稍后再试。',
-      email_unsupported: '微博不接受该邮箱（格式不符合或该邮箱服务商规则不支持），并非“已注册/未注册”。',
-      client_format_check: '邮箱格式不符合要求。',
-      timeout: '请求微博超时，无法判断，请重试。',
-      network_error: '无法连接微博（本机需能正常访问 weibo.com）。',
-      bad_response: '微博返回了非预期内容，可能改版或被风控拦截。',
-      unexpected_response: '微博返回结构异常，可能接口已变化。',
-      unknown_message: '微博返回了未知提示，为避免误判不下结论。',
-    };
+    let cancelled = false;
+    let lastResults = [];
 
-    function showResult(data) {
-      const key = data.status && VERDICTS[data.status] ? data.status : 'error';
-      const v = VERDICTS[key];
-      resultEl.className = 'result show ' + v.cls;
-      $('verdict').textContent = v.zh;
-      $('verdictEn').textContent = v.en;
-
-      let detail = '';
-      if (data.reason && REASON_ZH[data.reason]) detail = REASON_ZH[data.reason];
-      else if (data.message) detail = data.message;
-      $('detail').textContent = detail;
-
-      // Show the actual Weibo prompt text when we have it.
-      const promptEl = $('prompt');
-      const weiboMsg = (data.evidence && data.evidence.msg) || data.message;
-      if (weiboMsg && data.status !== 'invalid_email' && data.status !== 'network_error') {
-        promptEl.hidden = false;
-        promptEl.textContent = '微博返回：' + weiboMsg;
-      } else {
-        promptEl.hidden = true;
+    function parseEmails(text) {
+      const parts = text.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
+      const seen = new Set(), out = [];
+      for (const p of parts) {
+        const key = p.toLowerCase();
+        if (!seen.has(key)) { seen.add(key); out.push(p); }
       }
-
-      $('raw').textContent = JSON.stringify(data, null, 2);
-      $('raw-wrap').hidden = false;
+      return out;
     }
 
-    async function check() {
-      const email = emailEl.value.trim();
-      if (!email) { emailEl.focus(); return; }
+    function updateCount() {
+      const n = parseEmails(emailsEl.value).length;
+      $('count').textContent = n + ' 个邮箱' + (n > MAX_EMAILS ? `（超出，仅检测前 ${MAX_EMAILS} 个）` : '');
+    }
+    emailsEl.addEventListener('input', updateCount);
 
-      btn.disabled = true;
-      const original = btn.textContent;
-      btn.innerHTML = '<span class="spinner"></span>检测中';
-      resultEl.className = 'result';
+    function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
+    async function checkOne(email) {
+      // retry a few times on rate-limit (429)
+      for (let attempt = 0; attempt < 4; attempt++) {
+        let resp;
+        try {
+          resp = await fetch('/api/check?email=' + encodeURIComponent(email));
+        } catch (e) {
+          return { email, status: 'error', message: '无法连接后端：' + e.message };
+        }
+        if (resp.status === 429) { await sleep(3000); continue; }
+        try { return await resp.json(); }
+        catch (e) { return { email, status: 'error', message: '返回解析失败' }; }
+      }
+      return { email, status: 'inconclusive', reason: 'rate_limited', message: '频率限制，多次重试仍失败' };
+    }
+
+    function badge(status) {
+      const v = VERDICTS[status] ? VERDICTS[status].zh : status;
+      return `<span class="badge b-${status}">${v}</span>`;
+    }
+
+    function renderSummary() {
+      const counts = {};
+      for (const r of lastResults) counts[r.status] = (counts[r.status] || 0) + 1;
+      const order = ['registered','not_registered','unsupported','inconclusive','invalid_email','error'];
+      const cls = { registered:'c-registered', not_registered:'c-not' };
+      const chips = order.filter((s) => counts[s]).map((s) =>
+        `<span class="chip ${cls[s]||'c-other'}">${VERDICTS[s].zh} <b>${counts[s]}</b></span>`
+      );
+      const sEl = $('summary');
+      sEl.innerHTML = chips.join('');
+      sEl.classList.toggle('show', chips.length > 0);
+    }
+
+    function setRow(i, email, cellHtml, msg) {
+      let tr = document.getElementById('row' + i);
+      if (!tr) {
+        tr = document.createElement('tr');
+        tr.id = 'row' + i;
+        tr.innerHTML = `<td class="idx">${i + 1}</td><td class="email"></td><td class="res"></td><td class="msg"></td>`;
+        $('tbody').appendChild(tr);
+        tr.querySelector('.email').textContent = email;
+      }
+      tr.querySelector('.res').innerHTML = cellHtml;
+      tr.querySelector('.msg').textContent = msg || '';
+    }
+
+    async function run() {
+      let list = parseEmails(emailsEl.value);
+      if (list.length === 0) { emailsEl.focus(); return; }
+      if (list.length > MAX_EMAILS) list = list.slice(0, MAX_EMAILS);
+
+      cancelled = false;
+      lastResults = [];
+      btn.disabled = true; btn.textContent = '检测中';
+      stopBtn.hidden = false; copyBtn.hidden = true;
+      $('tbody').innerHTML = '';
+      $('tablewrap').classList.add('show');
+      $('progress').classList.add('show');
+      $('summary').classList.remove('show');
+
+      for (let i = 0; i < list.length; i++) {
+        if (cancelled) break;
+        const email = list[i];
+        setRow(i, email, '<span class="badge b-pending"><span class="spinner"></span>检测中</span>', '');
+        $('progtext').textContent = `检测中 ${i + 1} / ${list.length}：${email}`;
+        $('progbar').style.width = ((i) / list.length * 100) + '%';
+
+        const res = await checkOne(email);
+        lastResults.push(res);
+        const msg = (res.evidence && res.evidence.msg) || res.message || (res.reason || '');
+        setRow(i, email, badge(res.status || 'error'), msg);
+        renderSummary();
+        $('progbar').style.width = ((i + 1) / list.length * 100) + '%';
+      }
+
+      $('progtext').textContent = cancelled
+        ? `已停止，完成 ${lastResults.length} / ${list.length}`
+        : `完成，共检测 ${lastResults.length} 个`;
+      btn.disabled = false; btn.textContent = '检测';
+      stopBtn.hidden = true;
+      copyBtn.hidden = lastResults.length === 0;
+    }
+
+    btn.addEventListener('click', run);
+    stopBtn.addEventListener('click', () => { cancelled = true; stopBtn.hidden = true; });
+    clearBtn.addEventListener('click', () => {
+      emailsEl.value = ''; updateCount();
+      $('tbody').innerHTML = '';
+      $('tablewrap').classList.remove('show');
+      $('summary').classList.remove('show');
+      $('progress').classList.remove('show');
+      copyBtn.hidden = true;
+    });
+    copyBtn.addEventListener('click', async () => {
+      const lines = ['email\tstatus\tregistered\tmessage'];
+      for (const r of lastResults) {
+        const zh = VERDICTS[r.status] ? VERDICTS[r.status].zh : r.status;
+        const msg = ((r.evidence && r.evidence.msg) || r.message || '').replace(/\s+/g, ' ');
+        lines.push([r.email, zh, r.registered, msg].join('\t'));
+      }
       try {
-        const resp = await fetch('/api/check?email=' + encodeURIComponent(email));
-        const data = await resp.json();
-        showResult(data);
-      } catch (e) {
-        showResult({ status: 'error', message: '无法连接后端服务：' + e.message });
-      } finally {
-        btn.disabled = false;
-        btn.textContent = original;
-      }
-    }
+        await navigator.clipboard.writeText(lines.join('\n'));
+        copyBtn.textContent = '已复制 ✓';
+        setTimeout(() => (copyBtn.textContent = '复制结果'), 1500);
+      } catch { copyBtn.textContent = '复制失败'; }
+    });
 
-    btn.addEventListener('click', check);
-    emailEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+    // Ctrl/Cmd+Enter to run
+    emailsEl.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') run();
+    });
+    updateCount();
   </script>
 </body>
 </html>
