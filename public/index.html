@@ -67,6 +67,9 @@
     .count { color: var(--muted); font-size: 13px; margin-left: auto; }
     .hint { color: var(--muted); font-size: 12px; margin-top: 12px; }
     code { background: rgba(0,0,0,.05); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
+    .settings { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; font-size: 12px; color: var(--muted); align-items: center; }
+    .opt { display: inline-flex; align-items: center; gap: 6px; }
+    .settings input[type="number"] { width: 58px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; }
 
     .progress { margin-top: 16px; font-size: 13px; color: var(--muted); display: none; }
     .progress.show { display: block; }
@@ -134,6 +137,12 @@
         逐个检测（每个之间有间隔）。返回「该邮箱已注册，请直接登录」为<b>已注册</b>；可注册为<b>未注册</b>；
         <b>邮箱不可用</b>多为非法格式（如全数字 <code>@163.com</code>）——已注册的邮箱会优先显示「已注册」；
         频率过高会触发微博风控，返回<b>无法确定</b>。请减少数量、降低频率。单次最多 <b id="maxn">200</b> 个。
+      </div>
+
+      <div class="settings">
+        <label class="opt"><input type="checkbox" id="autoRetry" /> 自动重试未确定项直到全部确定</label>
+        <label class="opt">每个间隔 <input type="number" id="gap" min="0" step="0.5" value="2" /> 秒</label>
+        <label class="opt">轮间等待 <input type="number" id="roundWait" min="0" step="5" value="60" /> 秒</label>
       </div>
 
       <div class="progress" id="progress">
@@ -272,6 +281,37 @@
       if (n) retryBtn.textContent = `重试未确定项 (${n})`;
     }
 
+    const autoRetryEl = $('autoRetry');
+    function gapMs() { return Math.max(0, (parseFloat($('gap').value) || 0) * 1000); }
+    function roundWaitMs() { return Math.max(0, (parseFloat($('roundWait').value) || 0) * 1000); }
+
+    async function waitWithCountdown(ms) {
+      const end = Date.now() + ms;
+      while (!cancelled && Date.now() < end) {
+        const left = Math.ceil((end - Date.now()) / 1000);
+        $('progtext').textContent = `等待 ${left}s 后重试未确定项 (${unresolvedIndices().length})…`;
+        await sleep(Math.min(1000, end - Date.now()));
+      }
+    }
+
+    async function driveRounds(indices) {
+      await processIndices(indices);
+      let round = 0;
+      while (!cancelled && autoRetryEl.checked && unresolvedIndices().length > 0 && round < 100) {
+        round++;
+        btn.disabled = true; stopBtn.hidden = false; retryBtn.hidden = true; copyBtn.hidden = true;
+        await waitWithCountdown(roundWaitMs());
+        if (cancelled) break;
+        await processIndices(unresolvedIndices());
+      }
+      btn.disabled = false; btn.textContent = '检测'; stopBtn.hidden = true;
+      copyBtn.hidden = lastResults.filter(Boolean).length === 0;
+      updateRetryBtn();
+      if (!cancelled && unresolvedIndices().length === 0 && lastResults.some(Boolean)) {
+        $('progtext').textContent = '全部候选均已确定';
+      }
+    }
+
     async function processIndices(indices) {
       cancelled = false;
       btn.disabled = true; btn.textContent = '检测中';
@@ -297,6 +337,11 @@
 
         inconcStreak = res.status === 'inconclusive' ? inconcStreak + 1 : 0;
         if (inconcStreak >= 3) showWarn();
+
+        if (!cancelled && done < indices.length) {
+          const g = gapMs();
+          if (g > 0) await sleep(g);
+        }
       }
 
       $('progtext').textContent = cancelled ? `已停止（完成 ${done} / ${indices.length}）` : `完成 ${done} 个`;
@@ -315,13 +360,13 @@
       $('tbody').innerHTML = '';
       $('tablewrap').classList.add('show');
       $('summary').classList.remove('show');
-      await processIndices(list.map((_, i) => i));
+      await driveRounds(list.map((_, i) => i));
     }
 
     async function retryUnresolved() {
       const idx = unresolvedIndices();
       if (idx.length === 0) return;
-      await processIndices(idx);
+      await driveRounds(idx);
     }
 
     btn.addEventListener('click', run);
