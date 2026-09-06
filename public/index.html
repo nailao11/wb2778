@@ -124,6 +124,7 @@
       <div class="toolbar">
         <button id="btn" type="button">检测</button>
         <button id="stop" type="button" class="ghost" hidden>停止</button>
+        <button id="retry" type="button" class="ghost" hidden>重试未确定项</button>
         <button id="copy" type="button" class="ghost" hidden>复制结果</button>
         <button id="clear" type="button" class="ghost">清空</button>
         <span class="count" id="count">0 个邮箱</span>
@@ -178,7 +179,9 @@
     };
 
     let cancelled = false;
+    let currentList = [];
     let lastResults = [];
+    const retryBtn = $('retry');
 
     function parseEmails(text) {
       const parts = text.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
@@ -227,7 +230,7 @@
 
     function renderSummary() {
       const counts = {};
-      for (const r of lastResults) counts[r.status] = (counts[r.status] || 0) + 1;
+      for (const r of lastResults) { if (r) counts[r.status] = (counts[r.status] || 0) + 1; }
       const order = ['registered','not_registered','unsupported','inconclusive','invalid_email','error'];
       const cls = { registered:'c-registered', not_registered:'c-not' };
       const chips = order.filter((s) => counts[s]).map((s) =>
@@ -251,66 +254,94 @@
       tr.querySelector('.msg').textContent = msg || '';
     }
 
+    function showWarn() {
+      const w = $('warn');
+      w.hidden = false;
+      w.textContent = '⚠ 连续多个「无法确定」，疑似触发微博风控 / 限速。已自动放慢并重试；建议减少数量、降低频率或稍后再试。未被限速时，已注册的邮箱才会稳定显示「已注册」。';
+    }
+
+    function unresolvedIndices() {
+      const out = [];
+      lastResults.forEach((r, i) => { if (r && (r.status === 'inconclusive' || r.status === 'error')) out.push(i); });
+      return out;
+    }
+
+    function updateRetryBtn() {
+      const n = unresolvedIndices().length;
+      retryBtn.hidden = n === 0;
+      if (n) retryBtn.textContent = `重试未确定项 (${n})`;
+    }
+
+    async function processIndices(indices) {
+      cancelled = false;
+      btn.disabled = true; btn.textContent = '检测中';
+      stopBtn.hidden = false; copyBtn.hidden = true; retryBtn.hidden = true;
+      $('progress').classList.add('show');
+      $('warn').hidden = true;
+
+      let inconcStreak = 0, done = 0;
+      for (const i of indices) {
+        if (cancelled) break;
+        const email = currentList[i];
+        setRow(i, email, '<span class="badge b-pending"><span class="spinner"></span>检测中</span>', '');
+        done++;
+        $('progtext').textContent = `检测中 ${done} / ${indices.length}：${email}`;
+        $('progbar').style.width = ((done - 1) / indices.length * 100) + '%';
+
+        const res = await checkOne(email);
+        lastResults[i] = res;
+        const msg = (res.evidence && res.evidence.msg) || res.message || (res.reason || '');
+        setRow(i, email, badge(res.status || 'error'), msg);
+        renderSummary();
+        $('progbar').style.width = (done / indices.length * 100) + '%';
+
+        inconcStreak = res.status === 'inconclusive' ? inconcStreak + 1 : 0;
+        if (inconcStreak >= 3) showWarn();
+      }
+
+      $('progtext').textContent = cancelled ? `已停止（完成 ${done} / ${indices.length}）` : `完成 ${done} 个`;
+      btn.disabled = false; btn.textContent = '检测';
+      stopBtn.hidden = true;
+      copyBtn.hidden = lastResults.filter(Boolean).length === 0;
+      updateRetryBtn();
+    }
+
     async function run() {
       let list = parseEmails(emailsEl.value);
       if (list.length === 0) { emailsEl.focus(); return; }
       if (list.length > MAX_EMAILS) list = list.slice(0, MAX_EMAILS);
-
-      cancelled = false;
-      lastResults = [];
-      btn.disabled = true; btn.textContent = '检测中';
-      stopBtn.hidden = false; copyBtn.hidden = true;
+      currentList = list;
+      lastResults = new Array(list.length).fill(null);
       $('tbody').innerHTML = '';
       $('tablewrap').classList.add('show');
-      $('progress').classList.add('show');
       $('summary').classList.remove('show');
-      $('warn').hidden = true;
+      await processIndices(list.map((_, i) => i));
+    }
 
-      let inconcStreak = 0;
-      for (let i = 0; i < list.length; i++) {
-        if (cancelled) break;
-        const email = list[i];
-        setRow(i, email, '<span class="badge b-pending"><span class="spinner"></span>检测中</span>', '');
-        $('progtext').textContent = `检测中 ${i + 1} / ${list.length}：${email}`;
-        $('progbar').style.width = ((i) / list.length * 100) + '%';
-
-        const res = await checkOne(email);
-        lastResults.push(res);
-        const msg = (res.evidence && res.evidence.msg) || res.message || (res.reason || '');
-        setRow(i, email, badge(res.status || 'error'), msg);
-        renderSummary();
-        $('progbar').style.width = ((i + 1) / list.length * 100) + '%';
-
-        inconcStreak = res.status === 'inconclusive' ? inconcStreak + 1 : 0;
-        if (inconcStreak >= 3) {
-          const w = $('warn');
-          w.hidden = false;
-          w.textContent = '⚠ 连续多个「无法确定」，疑似触发微博风控 / 限速。已自动放慢并重试；建议减少数量、降低频率或稍后再试。未被限速时，已注册的邮箱才会稳定显示「已注册」。';
-        }
-      }
-
-      $('progtext').textContent = cancelled
-        ? `已停止，完成 ${lastResults.length} / ${list.length}`
-        : `完成，共检测 ${lastResults.length} 个`;
-      btn.disabled = false; btn.textContent = '检测';
-      stopBtn.hidden = true;
-      copyBtn.hidden = lastResults.length === 0;
+    async function retryUnresolved() {
+      const idx = unresolvedIndices();
+      if (idx.length === 0) return;
+      await processIndices(idx);
     }
 
     btn.addEventListener('click', run);
+    retryBtn.addEventListener('click', retryUnresolved);
     stopBtn.addEventListener('click', () => { cancelled = true; stopBtn.hidden = true; });
     clearBtn.addEventListener('click', () => {
       emailsEl.value = ''; updateCount();
+      currentList = []; lastResults = [];
       $('tbody').innerHTML = '';
       $('tablewrap').classList.remove('show');
       $('summary').classList.remove('show');
       $('progress').classList.remove('show');
       $('warn').hidden = true;
+      retryBtn.hidden = true;
       copyBtn.hidden = true;
     });
     copyBtn.addEventListener('click', async () => {
       const lines = ['email\tstatus\tregistered\tmessage'];
       for (const r of lastResults) {
+        if (!r) continue;
         const zh = VERDICTS[r.status] ? VERDICTS[r.status].zh : r.status;
         const msg = ((r.evidence && r.evidence.msg) || r.message || '').replace(/\s+/g, ' ');
         lines.push([r.email, zh, r.registered, msg].join('\t'));
