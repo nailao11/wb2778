@@ -8,7 +8,7 @@ $REFERER   = getenv('WEIBO_REFERER')
 $UA = getenv('USER_AGENT')
     ?: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 $TIMEOUT = (int)(getenv('CHECK_TIMEOUT') ?: 15);
-$MIN_INTERVAL_MS = (int)(getenv('MIN_INTERVAL_MS') ?: 1000);
+$MIN_INTERVAL_MS = (int)(getenv('MIN_INTERVAL_MS') ?: 1500);
 
 function out($arr) {
     echo json_encode($arr, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);

@@ -102,6 +102,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .warn { margin-top: 12px; font-size: 13px; color: var(--warn); background: var(--warn-bg); border-radius: 8px; padding: 8px 12px; }
     .notice { margin-top: 22px; font-size: 12px; color: var(--muted); border-left: 3px solid var(--line); padding: 4px 0 4px 12px; }
     .notice b { color: var(--neutral); }
   </style>
@@ -129,15 +130,17 @@
       </div>
 
       <div class="hint">
-        逐个检测（每个之间有间隔）。返回「该邮箱已注册，请直接登录」为<b>已注册</b>；
-        可注册为<b>未注册</b>；微博不接受为<b>邮箱不可用</b>；验证码 / 频率限制等为<b>无法确定</b>。
-        单次最多 <b id="maxn">200</b> 个。
+        逐个检测（每个之间有间隔）。返回「该邮箱已注册，请直接登录」为<b>已注册</b>；可注册为<b>未注册</b>；
+        <b>邮箱不可用</b>多为非法格式（如全数字 <code>@163.com</code>）——已注册的邮箱会优先显示「已注册」；
+        频率过高会触发微博风控，返回<b>无法确定</b>。请减少数量、降低频率。单次最多 <b id="maxn">200</b> 个。
       </div>
 
       <div class="progress" id="progress">
         <span id="progtext"></span>
         <div class="bar"><i id="progbar"></i></div>
       </div>
+
+      <div class="warn" id="warn" hidden></div>
 
       <div class="summary" id="summary"></div>
 
@@ -196,19 +199,26 @@
 
     function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
+    const SOFT_REASONS = ['challenge_or_rate_limit', 'bad_response', 'unexpected_response', 'rate_limited'];
     async function checkOne(email) {
-      for (let attempt = 0; attempt < 4; attempt++) {
+      let wait = 3000;
+      for (let attempt = 0; attempt < 3; attempt++) {
         let resp;
         try {
           resp = await fetch(API_URL + '?email=' + encodeURIComponent(email));
         } catch (e) {
           return { email, status: 'error', message: '无法连接后端：' + e.message };
         }
-        if (resp.status === 429) { await sleep(3000); continue; }
-        try { return await resp.json(); }
+        if (resp.status === 429) { await sleep(wait); wait *= 2; continue; }
+        let data;
+        try { data = await resp.json(); }
         catch (e) { return { email, status: 'error', message: '返回解析失败' }; }
+        if (data.status === 'inconclusive' && SOFT_REASONS.includes(data.reason) && attempt < 2) {
+          await sleep(wait); wait *= 2; continue;
+        }
+        return data;
       }
-      return { email, status: 'inconclusive', reason: 'rate_limited', message: '频率限制，多次重试仍失败' };
+      return { email, status: 'inconclusive', reason: 'rate_limited', message: '疑似风控/限速，多次重试仍无法确定' };
     }
 
     function badge(status) {
@@ -255,7 +265,9 @@
       $('tablewrap').classList.add('show');
       $('progress').classList.add('show');
       $('summary').classList.remove('show');
+      $('warn').hidden = true;
 
+      let inconcStreak = 0;
       for (let i = 0; i < list.length; i++) {
         if (cancelled) break;
         const email = list[i];
@@ -269,6 +281,13 @@
         setRow(i, email, badge(res.status || 'error'), msg);
         renderSummary();
         $('progbar').style.width = ((i + 1) / list.length * 100) + '%';
+
+        inconcStreak = res.status === 'inconclusive' ? inconcStreak + 1 : 0;
+        if (inconcStreak >= 3) {
+          const w = $('warn');
+          w.hidden = false;
+          w.textContent = '⚠ 连续多个「无法确定」，疑似触发微博风控 / 限速。已自动放慢并重试；建议减少数量、降低频率或稍后再试。未被限速时，已注册的邮箱才会稳定显示「已注册」。';
+        }
       }
 
       $('progtext').textContent = cancelled
@@ -287,6 +306,7 @@
       $('tablewrap').classList.remove('show');
       $('summary').classList.remove('show');
       $('progress').classList.remove('show');
+      $('warn').hidden = true;
       copyBtn.hidden = true;
     });
     copyBtn.addEventListener('click', async () => {
