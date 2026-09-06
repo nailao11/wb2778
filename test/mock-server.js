@@ -1,15 +1,8 @@
 'use strict';
 
-/**
- * Local mock of Weibo's /signup/v5/formcheck endpoint, returning the exact
- * JSON shapes observed from the real service. Used for offline testing
- * (weibo.com is not contacted).
- */
-
 const http = require('http');
 const { URL } = require('url');
 
-// Real response shapes captured from https://weibo.com/signup/v5/formcheck
 const RESP = {
   registered: {
     code: '600001',
@@ -44,7 +37,7 @@ function pick(value) {
   if (value.startsWith('nope') || value.startsWith('bad')) return RESP.unsupported;
   if (value.startsWith('captcha')) return RESP.challenge;
   if (value.startsWith('param')) return RESP.paramerr;
-  return RESP.available; // default: treat unknown as available
+  return RESP.available;
 }
 
 function createMockServer() {

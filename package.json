@@ -2,7 +2,7 @@
   "name": "weibo-email-registration-checker",
   "version": "2.0.0",
   "private": true,
-  "description": "Educational tool to check whether a single email address is already registered on Weibo, using Weibo's own signup form-check endpoint. Zero dependencies. For personal learning / authorized security research only.",
+  "description": "Check whether an email is registered on Weibo, via Weibo's signup form-check endpoint. For personal learning / authorized testing only.",
   "type": "commonjs",
   "main": "server.js",
   "scripts": {

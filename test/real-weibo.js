@@ -1,15 +1,5 @@
 'use strict';
 
-/**
- * REAL integration test — contacts the live Weibo endpoint.
- * Only works on a machine/network that can reach weibo.com.
- *
- *   node test/real-weibo.js someone@example.com another@example.com
- *
- * With no arguments it checks one random, almost-certainly-unregistered
- * address (expected: not_registered) so it never enumerates real accounts.
- */
-
 const { checkEmail } = require('../lib/checker');
 
 const args = process.argv.slice(2);

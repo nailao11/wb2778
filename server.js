@@ -1,24 +1,10 @@
 'use strict';
 
-/**
- * Tiny HTTP server for the Weibo email registration checker.
- *
- * - Serves the frontend from ./public
- * - GET /api/check?email=...  -> JSON verdict (registered / not_registered /
- *   inconclusive / invalid_email)
- *
- * The heavy lifting (driving the real Weibo signup page) lives in lib/checker.js.
- * A backend is required because the browser cannot read weibo.com's response
- * cross-origin, and Weibo runs anti-bot JS that a plain fetch cannot satisfy.
- *
- * For personal learning / authorized security research only.
- */
-
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
-const { checkEmail, closeBrowser, CONFIG } = require('./lib/checker');
+const { checkEmail, CONFIG } = require('./lib/checker');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -33,11 +19,8 @@ const MIME = {
   '.json': 'application/json; charset=utf-8',
 };
 
-// Very small per-IP rate limit (the checker also serializes globally).
-const RATE_WINDOW_MS = 60_000;
-// Per-IP cap. Batches are checked sequentially and the checker already paces
-// requests toward Weibo via MIN_INTERVAL_MS, so this is just an abuse ceiling.
-const RATE_MAX = parseInt(process.env.RATE_MAX || '120', 10); // per IP per minute
+const RATE_WINDOW_MS = 60000;
+const RATE_MAX = parseInt(process.env.RATE_MAX || '120', 10);
 const hits = new Map();
 
 function rateLimited(ip) {
@@ -49,17 +32,12 @@ function rateLimited(ip) {
 }
 
 function sendJson(res, code, obj) {
-  const body = JSON.stringify(obj, null, 2);
-  res.writeHead(code, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store',
-  });
-  res.end(body);
+  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify(obj, null, 2));
 }
 
-function serveStatic(req, res, pathname) {
-  let rel = pathname === '/' ? '/index.html' : pathname;
-  // Prevent path traversal.
+function serveStatic(res, pathname) {
+  const rel = pathname === '/' ? '/index.html' : pathname;
   const filePath = path.normalize(path.join(PUBLIC_DIR, rel));
   if (!filePath.startsWith(PUBLIC_DIR)) {
     res.writeHead(403);
@@ -87,34 +65,19 @@ const server = http.createServer(async (req, res) => {
   const pathname = parsed.pathname;
 
   if (pathname === '/api/check') {
-    const ip =
-      (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-      req.socket.remoteAddress ||
-      'unknown';
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+      req.socket.remoteAddress || 'unknown';
     if (rateLimited(ip)) {
-      return sendJson(res, 429, {
-        status: 'error',
-        error: 'rate_limited',
-        message: '请求过于频繁，请稍后再试 (rate limited).',
-      });
+      return sendJson(res, 429, { status: 'error', error: 'rate_limited', message: '请求过于频繁，请稍后再试' });
     }
     const email = (parsed.searchParams.get('email') || '').trim();
     if (!email) {
-      return sendJson(res, 400, {
-        status: 'error',
-        error: 'missing_email',
-        message: '缺少 email 参数 (missing "email" query parameter).',
-      });
+      return sendJson(res, 400, { status: 'error', error: 'missing_email', message: '缺少 email 参数' });
     }
     try {
-      const result = await checkEmail(email);
-      return sendJson(res, 200, result);
+      return sendJson(res, 200, await checkEmail(email));
     } catch (err) {
-      return sendJson(res, 500, {
-        status: 'error',
-        error: 'internal',
-        message: String((err && err.message) || err),
-      });
+      return sendJson(res, 500, { status: 'error', error: 'internal', message: String((err && err.message) || err) });
     }
   }
 
@@ -123,7 +86,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET') {
-    return serveStatic(req, res, pathname);
+    return serveStatic(res, pathname);
   }
 
   res.writeHead(405);
@@ -131,18 +94,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`\n  微博邮箱注册检测 / Weibo email registration checker`);
-  console.log(`  Server running at   http://${HOST}:${PORT}`);
-  console.log(`  Weibo check endpoint: ${CONFIG.formcheckUrl}`);
-  console.log(`  Min interval: ${CONFIG.minIntervalMs}ms\n`);
-  console.log('  ⚠  For personal learning / authorized testing only. Check emails you own or are authorized to check.\n');
+  console.log(`Weibo email checker running at http://${HOST}:${PORT}`);
 });
 
-async function shutdown() {
-  console.log('\nShutting down...');
-  server.close();
-  await closeBrowser();
-  process.exit(0);
-}
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', () => { server.close(); process.exit(0); });
+process.on('SIGTERM', () => { server.close(); process.exit(0); });

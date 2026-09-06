@@ -11,7 +11,7 @@
       --ink: #1f2328;
       --muted: #6b7280;
       --line: #e5e7eb;
-      --brand: #e6162d;      /* Weibo red */
+      --brand: #e6162d;
       --brand-dark: #c50f24;
       --ok: #157347;
       --ok-bg: #e8f5ee;
@@ -112,13 +112,13 @@
       <div class="logo">微</div>
       <div>
         <h1>微博邮箱注册检测</h1>
-        <div class="sub">Weibo email registration checker · 仅用于个人学习 / 授权测试</div>
+        <div class="sub">仅用于个人学习 / 授权测试</div>
       </div>
     </div>
 
     <div class="card">
-      <label for="emails">邮箱地址 Email（可输入多个：每行一个，或用逗号 / 空格 / 分号分隔）</label>
-      <textarea id="emails" placeholder="例如：&#10;alice@163.com&#10;bob@gmail.com, carol@qq.com"
+      <label for="emails">邮箱地址（可输入多个：每行一个，或用逗号 / 空格 / 分号分隔）</label>
+      <textarea id="emails" placeholder="例如：&#10;name1@163.com&#10;name2@gmail.com, name3@qq.com"
                 autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
       <div class="toolbar">
         <button id="btn" type="button">检测</button>
@@ -129,13 +129,13 @@
       </div>
 
       <div class="hint">
-        逐个检测（每个之间有间隔，礼貌限速）。返回「该邮箱已注册，请直接登录」为<b>已注册</b>；
-        可注册为<b>未注册</b>；微博不接受为<b>邮箱不可用</b>；验证码 / 频率限制等为<b>无法确定</b>，绝不误判。
+        逐个检测（每个之间有间隔）。返回「该邮箱已注册，请直接登录」为<b>已注册</b>；
+        可注册为<b>未注册</b>；微博不接受为<b>邮箱不可用</b>；验证码 / 频率限制等为<b>无法确定</b>。
         单次最多 <b id="maxn">200</b> 个。
       </div>
 
       <div class="progress" id="progress">
-        <span id="progtext">准备中…</span>
+        <span id="progtext"></span>
         <div class="bar"><i id="progbar"></i></div>
       </div>
 
@@ -157,11 +157,9 @@
     </div>
   </div>
 
-  <script>window.API_URL=check.php;</script>
+  <script>window.API_URL='check.php';</script>
   <script>
     const MAX_EMAILS = 200;
-    // API endpoint: '/api/check' for the Node server; set window.API_URL to
-    // 'check.php' when deployed on PHP hosting.
     const API_URL = window.API_URL || '/api/check';
     const $ = (id) => document.getElementById(id);
     const emailsEl = $('emails'), btn = $('btn'), stopBtn = $('stop'),
@@ -199,7 +197,6 @@
     function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
     async function checkOne(email) {
-      // retry a few times on rate-limit (429)
       for (let attempt = 0; attempt < 4; attempt++) {
         let resp;
         try {
@@ -306,7 +303,6 @@
       } catch { copyBtn.textContent = '复制失败'; }
     });
 
-    // Ctrl/Cmd+Enter to run
     emailsEl.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') run();
     });
